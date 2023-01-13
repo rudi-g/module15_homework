@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1" />
+        <title>Чат</title>
+        <style>
+            .chat-window {
+                display: flex;
+                flex-direction: column;
+                max-width: 1350px;
+            }
+            .ch-form {
+                display: flex;
+            }
+            .message-input {
+                width: 300px;
+                padding: 0 5px;
+                box-sizing: border-box;
+                border: 2px solid #3a9ad0;
+                outline: none;
+                font-size: 14px;
+            }
+            .button {
+                display: flex;
+                box-sizing: border-box;
+                padding: 10px;
+                margin: 0 5px;
+                cursor: pointer;
+                background: #027dc3c7;
+                color: white;
+                border: none;
+                transition: 0.5s;
+            }
+            .button:hover {
+                background: #d22f0fc7;
+            }
+            #ch-messages {
+                display: flex;
+                flex-direction: column;
+                width: 494px;
+                min-height: 300px;
+                max-height: 500px;
+                margin-top: 10px;
+                border: 2px solid #3a9ad0;
+                overflow-y: scroll;
+            }
+            .msg {
+                width: fit-content;
+                max-width: 200px;
+                margin: 10px 15px;
+                padding: 10px;
+                border-radius: 5px;
+                overflow-wrap: break-word;
+                border: 2px solid #a8a5a5;
+                color: #373535;
+                background: #f2f2f2;
+            }
+            .msg.server {
+                align-self: end;
+                border-color: #4f95bd;
+                background: #e4f3ff;                
+            }
+        </style>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const wsUri = "wss://echo-ws-service.herokuapp.com";
+
+                const output = document.getElementById("ch-messages");
+                const btnSend = document.querySelector('.bt-send');
+                const btnGeo = document.querySelector('.bt-geo');
+
+                let message,
+                    websocket;
+
+                function writeToScreen(message, interface = 'web') {
+                    let par = document.createElement("p");
+                    par.className = `msg ${interface}`;
+                    par.innerHTML = message;
+                    output.appendChild(par);
+                }
+
+                function send(response = true) {
+                    if (!message) return false;
+
+                    websocket = new WebSocket(wsUri);
+                    websocket.onopen = function() {
+                        websocket.send(message);
+                        writeToScreen(message, 'web');
+                        document.querySelector('.message-input').value = '';
+                    };                    
+                    websocket.onmessage = function(e) {
+                        if (response) {
+                            writeToScreen(e.data, 'server');
+                        }
+                        websocket.close();
+                        websocket = null;
+                        message = '';
+                    };
+                    websocket.onerror = function(e) {
+                        writeToScreen(
+                            '<span style="color: #d04d4d">ERROR:</span> ' + e.data
+                        );
+                    };               
+                }
+
+                const geoSuccess = (position) => {
+                    const latitude  = position.coords.latitude;
+                    const longitude = position.coords.longitude;
+                    const mapLink = `https://www.openstreetmap.org/#map=18/${latitude}/${longitude}`;
+                    
+                    message = `<a href="${mapLink}" target="_blank">Геолокация</a>`;
+                    send(false);
+                }
+
+                const geoError = () => {
+                    message = '<span style="color: #d04d4d">Отказано в доступе к местоположению</span>';
+                    send(false);
+                }
+
+                btnSend.addEventListener('click', () => {
+                    message = document.querySelector('.message-input').value;
+                    send();
+                });
+
+                btnGeo.addEventListener('click', () => {
+                    navigator.geolocation.getCurrentPosition(geoSuccess, geoError);
+                });
+            })
+        </script>
+    </head>
+    <body>
+        <section class="chat-window">
+            <div class="ch-form">
+                <input type="text" placeholder="Текст сообщения" class="message-input">
+                <button class="button bt-send">Отправить</button>
+                <button class="button bt-geo">Гео-локация</button>
+            </div>
+            <div id="ch-messages"></div>
+        </section>
+        
+    </body>
+</html>
